@@ -8,20 +8,38 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRepository } from './users.repository';
 import { PaginateQuery, Paginated, paginate } from 'nestjs-paginate';
 import { User } from './entities/user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly userRepository: UserRepository) {}
 
   async create(createUserDto: CreateUserDto) {
-    const userEntity = this.userRepository.create(createUserDto);
-    const user = await this.userRepository.save(userEntity);
+    try {
+      const userEntity = this.userRepository.create(createUserDto);
 
-    if (!user) {
-      throw new BadRequestException('User not created');
+      const passwordHash = await bcrypt.hash(createUserDto.password, 10);
+
+      if (!passwordHash) {
+        throw new BadRequestException('Password not hashed');
+      }
+
+      const user = await this.userRepository.save({
+        ...userEntity,
+        password: passwordHash,
+      });
+
+      if (!user) {
+        throw new BadRequestException('User not created');
+      }
+
+      return user;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(error);
     }
-
-    return user;
   }
 
   async findAll(query: PaginateQuery): Promise<Paginated<User>> {
@@ -38,6 +56,10 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  async findOneByEmail(email: string) {
+    return await this.userRepository.findOne({ where: { email } });
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
@@ -70,5 +92,14 @@ export class UsersService {
     return {
       message: 'User delete successfully',
     };
+  }
+
+  // compare hash string
+  async compareHash(text: string, hash: string) {
+    try {
+      return await bcrypt.compare(text, hash);
+    } catch (error) {
+      throw new BadRequestException(error);
+    }
   }
 }

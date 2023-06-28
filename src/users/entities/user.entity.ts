@@ -6,8 +6,14 @@ export class User {
   id: string;
 
   @Column({ length: 50, nullable: true })
-  firstName: string;
+  firstName?: string;
 
   @Column({ length: 50, nullable: true })
-  lastName: string;
+  lastName?: string;
+
+  @Column({ length: 100, nullable: true })
+  email: string;
+
+  @Column({ length: 255, nullable: true })
+  password: string;
 }
